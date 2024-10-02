@@ -1,0 +1,68 @@
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Create a graph
+G = nx.Graph()
+
+# Add edges with weights
+edges = [
+    ('DC4', 'DC1', 10),
+    ('DC4', 'DC2', 15),
+    ('DC4', 'DC3', 25),
+    ('DC4', 'DC5', 18),
+    ('DC4', 'DC4', 5),
+    ('DC1', 'DC3', 21),
+    ('DC1', 'DC2', 16),
+    ('DC1', 'DC5', 15),
+    ('DC1', 'DC1', 7),
+    ('DC5', 'DC5', 6),
+    ('DC5', 'DC3', 11),
+    ('DC5', 'DC2', 12),
+    ('DC2', 'DC3', 16),
+    ('DC2', 'DC2', 3),
+    ('DC3', 'DC3', 6)
+]
+
+G.add_weighted_edges_from(edges)
+
+# Remove self-loops for the visualization
+G.remove_edges_from(nx.selfloop_edges(G))
+
+# Create the plot
+plt.figure(figsize=(12, 10))
+pos = nx.spring_layout(G, k=0.5, iterations=50)
+
+# Draw nodes
+nx.draw_networkx_nodes(G, pos, node_color='lightblue', node_size=3000)
+
+# Draw edges with varying thickness
+edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+nx.draw_networkx_edges(G, pos, width=[w/2 for w in edge_weights], edge_color='gray', alpha=0.6)
+
+# Draw labels
+nx.draw_networkx_labels(G, pos, font_size=10, font_weight='bold')
+
+# Draw edge labels
+edge_labels = nx.get_edge_attributes(G, 'weight')
+nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
+
+# Add a title
+plt.title("Datacenter Connection Graph", fontsize=16)
+plt.axis('off')
+plt.tight_layout()
+
+# Save the plot as an image file
+plt.savefig("datacenter_connection_graph.png", dpi=300, bbox_inches='tight')
+
+print("Visualization saved as 'datacenter_connection_graph.png'")
+
+# Optionally, display the plot (uncomment the next line if you want to show the plot)
+# plt.show()
+
+# Print additional information
+print("\nDatacenter Connections:")
+for (dc1, dc2, data) in G.edges(data=True):
+    print(f"{dc1} -- {dc2}: {data['weight']} shared provider(s)")
+
+print("\nTotal number of connections:", G.number_of_edges())
+print("Total number of datacenters:", G.number_of_nodes())
