@@ -1,0 +1,65 @@
+import pandas as pd
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Read the CSV file
+df = pd.read_csv('network_data.csv', sep=';')
+
+# Create a graph
+G = nx.Graph()
+
+# Add edges to the graph
+for _, row in df.iterrows():
+    dc1 = row['Datacenter 1']
+    dc2 = row['Datacenter 2']
+    provider = row['Provider']
+    
+    if pd.notna(dc1) and pd.notna(dc2) and pd.notna(provider):
+        # Add an edge between DC1 and DC2 if they share a provider
+        if not G.has_edge(dc1, dc2):
+            G.add_edge(dc1, dc2, providers=[provider])
+        else:
+            G[dc1][dc2]['providers'].append(provider)
+
+# Count the number of shared providers for edge thickness
+for (u, v, d) in G.edges(data=True):
+    d['weight'] = len(set(d['providers']))  # use set to count unique providers
+
+# Set node colors and sizes
+color_map = ['lightblue' for _ in G.nodes()]
+size_map = [2000 for _ in G.nodes()]
+
+# Create the plot
+plt.figure(figsize=(20, 16))
+pos = nx.spring_layout(G, k=0.5, iterations=50)
+
+# Draw nodes
+nx.draw_networkx_nodes(G, pos, node_color=color_map, node_size=size_map)
+
+# Draw edges with varying thickness
+edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+nx.draw_networkx_edges(G, pos, width=edge_weights, edge_color='gray', alpha=0.6)
+
+# Draw labels
+nx.draw_networkx_labels(G, pos, font_size=8, font_weight='bold')
+
+# Add a title
+plt.title("Datacenter Network Effect Visualization", fontsize=20)
+plt.axis('off')
+plt.tight_layout()
+
+# Save the plot as an image file
+plt.savefig("datacenter_network_visualization.png", dpi=300, bbox_inches='tight')
+
+print("Visualization saved as 'datacenter_network_visualization.png'")
+
+# Optionally, display the plot (uncomment the next line if you want to show the plot)
+# plt.show()
+
+# Print additional information
+print("\nDatacenter Connections:")
+for (dc1, dc2, data) in G.edges(data=True):
+    print(f"{dc1} -- {dc2}: {len(data['providers'])} shared provider(s)")
+
+print("\nTotal number of connections:", G.number_of_edges())
+print("Total number of datacenters:", G.number_of_nodes())
