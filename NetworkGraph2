@@ -1,0 +1,105 @@
+import pandas as pd
+import networkx as nx
+import matplotlib.pyplot as plt
+import random
+
+# Read the CSV file
+df = pd.read_csv('network_data.csv', sep=';')
+
+# Create a function to generate distinct colors
+def generate_colors(n):
+    colors = []
+    for i in range(n):
+        color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+        colors.append(color)
+    return colors
+
+# Create graphs
+G_network = nx.Graph()
+G_connection = nx.Graph()
+
+# Process data and add edges
+for _, row in df.iterrows():
+    dc1 = row['Datacenter 1']
+    dc2 = row['Datacenter 2']
+    provider = row['Provider']
+    
+    if pd.notna(dc1) and pd.notna(dc2) and pd.notna(provider):
+        # For network effect graph
+        if not G_network.has_edge(dc1, dc2):
+            G_network.add_edge(dc1, dc2, providers=[provider])
+        else:
+            G_network[dc1][dc2]['providers'].append(provider)
+        
+        # For connection graph
+        if G_connection.has_edge(dc1, dc2):
+            G_connection[dc1][dc2]['weight'] += 1
+        else:
+            G_connection.add_edge(dc1, dc2, weight=1)
+
+# Generate colors for datacenters
+datacenters = list(set(G_network.nodes()))
+color_map = {dc: color for dc, color in zip(datacenters, generate_colors(len(datacenters)))}
+
+# Network Effect Visualization
+plt.figure(figsize=(20, 16))
+pos_network = nx.spring_layout(G_network, k=0.5, iterations=50)
+
+# Draw nodes with different colors
+nx.draw_networkx_nodes(G_network, pos_network, node_color=[color_map[node] for node in G_network.nodes()], node_size=2000)
+
+# Draw edges with varying thickness
+edge_weights = [len(set(G_network[u][v]['providers'])) for u, v in G_network.edges()]
+nx.draw_networkx_edges(G_network, pos_network, width=[w/2 for w in edge_weights], edge_color='gray', alpha=0.6)
+
+# Draw labels
+nx.draw_networkx_labels(G_network, pos_network, font_size=8, font_weight='bold')
+
+plt.title("Datacenter Network Effect Visualization", fontsize=20)
+plt.axis('off')
+plt.tight_layout()
+plt.savefig("datacenter_network_visualization.png", dpi=300, bbox_inches='tight')
+print("Network Effect Visualization saved as 'datacenter_network_visualization.png'")
+
+# Connection Graph Visualization
+plt.figure(figsize=(12, 10))
+pos_connection = nx.spring_layout(G_connection, k=0.5, iterations=50)
+
+# Draw nodes with different colors
+nx.draw_networkx_nodes(G_connection, pos_connection, node_color=[color_map[node] for node in G_connection.nodes()], node_size=3000)
+
+# Draw edges with varying thickness
+edge_weights = [G_connection[u][v]['weight'] for u, v in G_connection.edges()]
+nx.draw_networkx_edges(G_connection, pos_connection, width=[w/2 for w in edge_weights], edge_color='gray', alpha=0.6)
+
+# Draw labels
+nx.draw_networkx_labels(G_connection, pos_connection, font_size=10, font_weight='bold')
+
+# Draw edge labels
+edge_labels = nx.get_edge_attributes(G_connection, 'weight')
+nx.draw_networkx_edge_labels(G_connection, pos_connection, edge_labels=edge_labels, font_size=8)
+
+plt.title("Datacenter Connection Graph", fontsize=16)
+plt.axis('off')
+plt.tight_layout()
+plt.savefig("datacenter_connection_graph.png", dpi=300, bbox_inches='tight')
+print("Connection Graph Visualization saved as 'datacenter_connection_graph.png'")
+
+# Print additional information
+print("\nDatacenter Connections:")
+for (dc1, dc2, data) in G_connection.edges(data=True):
+    print(f"{dc1} -- {dc2}: {data['weight']} shared provider(s)")
+
+print("\nTotal number of connections:", G_connection.number_of_edges())
+print("Total number of datacenters:", G_connection.number_of_nodes())
+
+# Create a legend for datacenters and their colors
+plt.figure(figsize=(8, 6))
+for dc, color in color_map.items():
+    plt.plot([], [], 'o', color=color, label=dc, markersize=10)
+plt.legend(title="Datacenters", loc="center", fontsize=12)
+plt.axis('off')
+plt.title("Datacenter Color Legend", fontsize=16)
+plt.tight_layout()
+plt.savefig("datacenter_color_legend.png", dpi=300, bbox_inches='tight')
+print("Color Legend saved as 'datacenter_color_legend.png'")
